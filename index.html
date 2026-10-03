@@ -1,0 +1,2457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ProCV Builder Studio | Serverless Interactive CV Engine</title>
+  
+  <!-- Modern Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Montserrat:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <!-- html2canvas and jsPDF for Pure Client-side PDF Extraction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --surface: #ffffff;
+      --background: #0f172a;
+      --surface-card: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --accent: #38bdf8;
+      --danger: #ef4444;
+      --success: #10b981;
+      
+      /* Active CV Theme Controls */
+      --cv-font: 'Plus Jakarta Sans', sans-serif;
+      --cv-primary: #1e3a8a;
+      --cv-accent: #3b82f6;
+      --cv-text: #1f2937;
+      --cv-bg: #ffffff;
+      --cv-spacing-scale: 1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--background);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Fixed Header Area */
+    .header-fixed-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.98);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+
+    header.app-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.7rem 1.2rem;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #fff;
+    }
+    .brand i {
+      color: var(--accent);
+      font-size: 1.3rem;
+    }
+    .app-steps {
+      display: flex;
+      gap: 0.4rem;
+    }
+    .step-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: var(--surface-card);
+      color: var(--text-muted);
+      cursor: pointer;
+      border: 1px solid var(--border);
+      transition: all 0.2s ease;
+    }
+    .step-badge.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+    }
+
+    /* Permanent Fixed Top Sub-Bar for Formatting & History */
+    .app-subbar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.4rem 1.2rem;
+      background: #090e17;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      gap: 0.5rem;
+    }
+    .app-subbar.active {
+      display: flex;
+    }
+    .app-subbar::-webkit-scrollbar {
+      height: 3px;
+    }
+    .app-subbar::-webkit-scrollbar-thumb {
+      background: var(--border);
+    }
+    .subbar-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex-shrink: 0;
+    }
+    .subbar-divider {
+      display: inline-block;
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+      margin: 0 0.3rem;
+      flex-shrink: 0;
+    }
+    .tool-btn {
+      background: #1e293b;
+      border: 1px solid var(--border);
+      color: #fff;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.82rem;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .tool-btn:hover, .tool-btn:active { background: var(--primary); }
+    .tool-btn.highlight {
+      background: #2563eb;
+      color: #fff;
+      border-color: #38bdf8;
+    }
+
+    /* Views Container */
+    .view-container {
+      display: none;
+      padding: 1.2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      flex: 1;
+      width: 100%;
+    }
+    .view-container.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Buttons & Inputs */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      padding: 0.55rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover, .btn-primary:active { background: var(--primary-dark); }
+    .btn-secondary { background: #334155; color: #fff; }
+    .btn-secondary:hover, .btn-secondary:active { background: #475569; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover, .btn-outline:active { background: var(--surface-card); }
+    .btn-danger { background: var(--danger); color: #fff; }
+
+    /* STEP 1: FORM WIZARD */
+    .wizard-card {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      max-width: 950px;
+      margin: 0 auto;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+    }
+    .wizard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.2rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+    }
+    .form-section {
+      margin-bottom: 1.5rem;
+      background: rgba(15, 23, 42, 0.4);
+      padding: 1.1rem;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .form-section h3 {
+      font-size: 1rem;
+      color: var(--accent);
+      margin-bottom: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.8rem;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-bottom: 0.75rem;
+    }
+    .form-group label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+    .form-control {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 0.65rem 0.8rem;
+      border-radius: 7px;
+      font-size: 0.88rem;
+      font-family: inherit;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    }
+    textarea.form-control {
+      resize: vertical;
+      min-height: 75px;
+    }
+
+    /* Photo Upload */
+    .photo-studio {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+    }
+    .photo-preview-wrap {
+      width: 85px;
+      height: 85px;
+      border-radius: 50%;
+      border: 2px dashed var(--accent);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0f172a;
+      flex-shrink: 0;
+    }
+    .photo-preview-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* STEP 2: TEMPLATE GALLERY & SAMPLE TILES */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.2rem;
+      margin-top: 1.2rem;
+    }
+    .tpl-card {
+      background: var(--surface-card);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+    }
+    .tpl-card:hover, .tpl-card:active {
+      border-color: var(--accent);
+      transform: translateY(-3px);
+    }
+    .tpl-card.selected {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.5);
+    }
+    .tpl-preview-thumb {
+      height: 220px;
+      background: #f1f5f9;
+      overflow: hidden;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      pointer-events: none;
+      position: relative;
+    }
+    .tpl-info {
+      padding: 0.85rem;
+      background: var(--surface-card);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .tpl-info h4 { font-size: 0.9rem; color: #fff; }
+    .tpl-tag { font-size: 0.68rem; padding: 2px 7px; border-radius: 12px; background: #334155; color: var(--accent); }
+
+    /* STEP 3: WORKSPACE & STUDIO EDITOR */
+    .studio-layout {
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
+      position: relative;
+    }
+    .studio-sidebar {
+      width: 340px;
+      flex-shrink: 0;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+      position: sticky;
+      top: 6.8rem;
+      max-height: calc(100vh - 8rem);
+      overflow-y: auto;
+      z-index: 20;
+    }
+    .editor-section-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* Color Palettes Grid */
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+      margin-bottom: 0.5rem;
+      max-height: 200px;
+      overflow-y: auto;
+      padding-right: 3px;
+    }
+    .palette-grid::-webkit-scrollbar { width: 4px; }
+    .palette-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .palette-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 6px;
+      border-radius: 6px;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: #cbd5e1;
+      font-size: 0.7rem;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .palette-btn:hover, .palette-btn:active { border-color: var(--accent); }
+    .palette-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.4);
+      flex-shrink: 0;
+    }
+
+    /* Canvas Scaler & Wrapper */
+    .canvas-wrapper {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-bottom: 5rem;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .sheet-zoom-viewport {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-visible: true;
+      transform-origin: top center;
+    }
+    
+    /* Strict Standard A4 Sheet dimensions */
+    .cv-sheet {
+      width: 210mm;
+      min-height: 297mm;
+      max-height: 297mm;
+      background: var(--cv-bg);
+      color: var(--cv-text);
+      font-family: var(--cv-font);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+      position: relative;
+      box-sizing: border-box;
+      overflow: hidden;
+      transition: max-height 0.2s ease, width 0.2s ease;
+      transform-origin: top center;
+      flex-shrink: 0;
+    }
+    
+    .cv-sheet.allow-multi {
+      max-height: none !important;
+      overflow: visible !important;
+    }
+
+    /* Page Break Boundary Line */
+    .page-break-indicator {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 297mm;
+      height: 2px;
+      border-top: 2px dashed #ef4444;
+      pointer-events: none;
+      z-index: 100;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .page-break-tag {
+      background: #ef4444;
+      color: #fff;
+      font-size: 0.68rem;
+      padding: 2px 8px;
+      border-radius: 0 0 0 6px;
+      font-weight: 700;
+    }
+
+    /* Draggable Sections */
+    .cv-section {
+      position: relative;
+      margin-bottom: calc(0.85rem * var(--cv-spacing-scale));
+      padding: calc(4px * var(--cv-spacing-scale));
+      border-radius: 4px;
+      border: 1px dashed transparent;
+      transition: all 0.2s;
+    }
+    .cv-section:hover, .cv-section:focus-within {
+      border-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.03);
+    }
+    .cv-section.dragging {
+      opacity: 0.3;
+      border-color: #f59e0b;
+    }
+    .cv-section.drag-over {
+      border-top: 3px solid #2563eb;
+      background: rgba(37, 99, 235, 0.08);
+    }
+
+    /* Section Control Handles */
+    .section-handle {
+      position: absolute;
+      right: 4px;
+      top: 4px;
+      display: none;
+      align-items: center;
+      gap: 0.3rem;
+      background: #0f172a;
+      padding: 3px 6px;
+      border-radius: 4px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+      z-index: 50;
+    }
+    .cv-section:hover .section-handle,
+    .cv-section:focus-within .section-handle {
+      display: flex;
+    }
+    .handle-btn {
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 3px 4px;
+      border-radius: 3px;
+    }
+    .handle-btn:hover, .handle-btn:active { color: #fff; background: #1e293b; }
+    .handle-btn.copy:hover { color: var(--accent); }
+    .handle-btn.del:hover { color: var(--danger); }
+
+    [contenteditable="true"] { outline: none; }
+    [contenteditable="true"]:focus {
+      background: rgba(59, 130, 246, 0.08);
+      box-shadow: 0 0 0 1.5px var(--accent);
+      border-radius: 2px;
+    }
+
+    /* ========================================================
+       20 PROFESSIONAL RADICAL STRUCTURAL BLUEPRINTS
+       ======================================================== */
+    /* 1. Modern Split Header */
+    .theme-1 { padding: 0; }
+    .theme-1 .header-band {
+      background: var(--cv-primary);
+      color: #ffffff;
+      padding: calc(26px * var(--cv-spacing-scale)) calc(25px * var(--cv-spacing-scale));
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .theme-1 .body-pane { padding: calc(20px * var(--cv-spacing-scale)); }
+    .theme-1 .cv-h2 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--cv-primary);
+      border-bottom: 2px solid var(--cv-primary);
+      padding-bottom: 3px;
+      margin-bottom: calc(7px * var(--cv-spacing-scale));
+      text-transform: uppercase;
+    }
+
+    /* 2. Strict Left Sidebar Grid (30/70) */
+    .theme-2 {
+      display: grid;
+      grid-template-columns: 68mm 142mm;
+      padding: 0;
+      min-height: 297mm;
+    }
+    .theme-2 .sidebar-left {
+      background: var(--cv-primary);
+      color: #ffffff;
+      padding: calc(22px * var(--cv-spacing-scale)) calc(16px * var(--cv-spacing-scale));
+    }
+    .theme-2 .main-right {
+      padding: calc(22px * var(--cv-spacing-scale)) calc(20px * var(--cv-spacing-scale));
+      background: var(--cv-bg);
+    }
+    .theme-2 .sidebar-left .cv-h2 {
+      color: var(--cv-accent);
+      font-size: 0.9rem;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      padding-bottom: 3px;
+      margin-bottom: calc(7px * var(--cv-spacing-scale));
+      text-transform: uppercase;
+    }
+    .theme-2 .main-right .cv-h2 {
+      color: var(--cv-primary);
+      font-size: 1.05rem;
+      border-bottom: 2px solid var(--cv-primary);
+      padding-bottom: 3px;
+      margin-bottom: calc(7px * var(--cv-spacing-scale));
+      text-transform: uppercase;
+    }
+
+    /* 3. Tech Monospace Matrix Terminal */
+    .theme-3 {
+      font-family: 'JetBrains Mono', monospace;
+      padding: calc(18mm * var(--cv-spacing-scale)) calc(16mm * var(--cv-spacing-scale));
+      border: 8px solid var(--cv-primary);
+      background: #fafafa;
+    }
+    .theme-3 .cv-h2 {
+      font-size: 1rem;
+      color: var(--cv-primary);
+      background: rgba(0,0,0,0.05);
+      padding: 3px 6px;
+      border-left: 4px solid var(--cv-primary);
+      margin-bottom: calc(7px * var(--cv-spacing-scale));
+    }
+    .theme-3 .cv-h2::before { content: "$ cat /"; opacity: 0.6; }
+
+    /* 4. Swiss Minimalist Editorial */
+    .theme-4 {
+      font-family: 'Inter', sans-serif;
+      padding: calc(18mm * var(--cv-spacing-scale)) calc(18mm * var(--cv-spacing-scale));
+    }
+    .theme-4 .cv-h2 {
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--cv-primary);
+      border-bottom: 2.5px solid #000;
+      padding-bottom: 3px;
+      margin-bottom: calc(8px * var(--cv-spacing-scale));
+    }
+
+    /* 5. Classic Ivy Academic / ATS */
+    .theme-5 {
+      font-family: 'Merriweather', serif;
+      padding: calc(16mm * var(--cv-spacing-scale));
+      line-height: 1.45;
+    }
+    .theme-5 .header-box {
+      text-align: center;
+      border-bottom: 1px solid #111;
+      padding-bottom: 8px;
+      margin-bottom: calc(10px * var(--cv-spacing-scale));
+    }
+    .theme-5 .cv-h2 {
+      font-family: 'Cinzel', serif;
+      text-align: center;
+      font-size: 1rem;
+      border-top: 1px solid #777;
+      border-bottom: 1px solid #777;
+      padding: 2px 0;
+      margin: calc(9px * var(--cv-spacing-scale)) 0 calc(6px * var(--cv-spacing-scale)) 0;
+      color: var(--cv-primary);
+    }
+
+    /* 6. Right Sidebar Magazine */
+    .theme-6 {
+      display: grid;
+      grid-template-columns: 140mm 70mm;
+      padding: 0;
+      min-height: 297mm;
+    }
+    .theme-6 .main-col { padding: calc(22px * var(--cv-spacing-scale)) calc(20px * var(--cv-spacing-scale)); }
+    .theme-6 .side-col {
+      background: #f1f5f9;
+      border-left: 2px solid var(--cv-primary);
+      padding: calc(22px * var(--cv-spacing-scale)) calc(16px * var(--cv-spacing-scale));
+    }
+    .theme-6 .cv-h2 {
+      color: var(--cv-primary);
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: calc(6px * var(--cv-spacing-scale));
+    }
+
+    /* 7. Executive Modular Cards */
+    .theme-7 {
+      padding: calc(16mm * var(--cv-spacing-scale));
+      background: #f8fafc;
+    }
+    .theme-7 .cv-section {
+      background: #ffffff;
+      padding: calc(10px * var(--cv-spacing-scale));
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .theme-7 .cv-h2 {
+      color: var(--cv-primary);
+      font-size: 0.95rem;
+      margin-bottom: calc(5px * var(--cv-spacing-scale));
+      border-bottom: 1px dashed var(--cv-accent);
+      padding-bottom: 3px;
+    }
+
+    /* 8. Metro Connected Timeline */
+    .theme-8 {
+      padding: calc(16mm * var(--cv-spacing-scale));
+    }
+    .theme-8 .cv-h2 {
+      color: var(--cv-primary);
+      font-size: 1.05rem;
+      margin-bottom: calc(8px * var(--cv-spacing-scale));
+      display: inline-block;
+      border-bottom: 2px solid var(--cv-accent);
+    }
+    .theme-8 .timeline-wrap {
+      border-left: 2px solid var(--cv-primary);
+      padding-left: 14px;
+      margin-left: 6px;
+    }
+
+    /* 9. Infographic Top Banner */
+    .theme-9 { padding: 0; }
+    .theme-9 .banner {
+      background: #0f172a;
+      color: #fff;
+      padding: calc(18px * var(--cv-spacing-scale)) calc(22px * var(--cv-spacing-scale));
+      border-bottom: 5px solid var(--cv-primary);
+    }
+    .theme-9 .body-block { padding: calc(18px * var(--cv-spacing-scale)); }
+    .theme-9 .cv-h2 {
+      color: var(--cv-primary);
+      font-size: 1rem;
+      font-weight: 800;
+      margin-bottom: calc(6px * var(--cv-spacing-scale));
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    /* 10. Asymmetric Offset */
+    .theme-10 {
+      padding: calc(16mm * var(--cv-spacing-scale)) calc(16mm * var(--cv-spacing-scale)) calc(16mm * var(--cv-spacing-scale)) calc(24mm * var(--cv-spacing-scale));
+      border-left: 14mm solid var(--cv-primary);
+    }
+    .theme-10 .cv-h2 {
+      color: var(--cv-primary);
+      font-size: 1.05rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: calc(7px * var(--cv-spacing-scale));
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 2px;
+    }
+
+    /* 11. Hexagon Tech Metrics */
+    .theme-11 {
+      padding: calc(18mm * var(--cv-spacing-scale));
+      background: #fafafa;
+    }
+    .theme-11 .header-metric {
+      border-bottom: 3px double var(--cv-primary);
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .theme-11 .cv-h2 {
+      color: var(--cv-primary);
+      font-size: 0.95rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .theme-11 .cv-h2::before {
+      content: "⬡";
+      color: var(--cv-accent);
+      font-size: 1.1rem;
+    }
+
+    /* 12. Split Charcoal Monogram */
+    .theme-12 {
+      padding: calc(18mm * var(--cv-spacing-scale));
+      border-top: 10px solid var(--cv-primary);
+    }
+    .theme-12 .monogram-badge {
+      width: 50px;
+      height: 50px;
+      background: var(--cv-primary);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      font-weight: 800;
+      border-radius: 8px;
+    }
+    .theme-12 .cv-h2 {
+      color: var(--cv-primary);
+      font-size: 1rem;
+      border-bottom: 2px solid var(--cv-accent);
+      padding-bottom: 3px;
+      margin-bottom: 8px;
+    }
+
+    /* 13. Executive Double Ribbon */
+    .theme-13 { padding: 0; }
+    .theme-13 .ribbon-1 {
+      background: var(--cv-primary);
+      height: 12px;
+      width: 100%;
+    }
+    .theme-13 .ribbon-content {
+      padding: calc(18mm * var(--cv-spacing-scale));
+    }
+    .theme-13 .cv-h2 {
+      color: var(--cv-primary);
+      font-size: 1.05rem;
+      background: #f1f5f9;
+      padding: 4px 10px;
+      border-left: 4px solid var(--cv-primary);
+      margin-bottom: 8px;
+    }
+
+    /* 14. Creative Portfolio Showcase */
+    .theme-14 {
+      padding: calc(18mm * var(--cv-spacing-scale));
+      background: #ffffff;
+    }
+    .theme-14 .showcase-banner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+    }
+    .theme-14 .cv-h2 {
+      color: var(--cv-primary);
+      font-size: 1.05rem;
+      position: relative;
+      padding-left: 12px;
+      margin-bottom: 6px;
+    }
+    .theme-14 .cv-h2::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--cv-accent);
+      border-radius: 2px;
+    }
+
+    /* 15. Dual-Column Compact Swiss Grid */
+    .theme-15 {
+      padding: calc(16mm * var(--cv-spacing-scale));
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 20px;
+      row-gap: 12px;
+    }
+    .theme-15 .full-width {
+      grid-column: 1 / -1;
+    }
+    .theme-15 .cv-h2 {
+      color: var(--cv-primary);
+      font-size: 0.95rem;
+      font-weight: 700;
+      border-bottom: 1px solid var(--cv-primary);
+      padding-bottom: 2px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    /* 16. Harvard Clean Professional */
+    .theme-16 {
+      padding: calc(18mm * var(--cv-spacing-scale));
+      font-family: 'Times New Roman', Times, serif;
+    }
+    .theme-16 .header-box {
+      text-align: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .theme-16 .cv-h2 {
+      font-size: 11pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      border-bottom: 1px solid #000;
+      margin-top: 10px;
+      margin-bottom: 6px;
+      color: #000;
+    }
+
+    /* 17. Silicon Valley Product Leader */
+    .theme-17 {
+      padding: calc(18mm * var(--cv-spacing-scale));
+      border-top: 12px solid var(--cv-accent);
+    }
+    .theme-17 .cv-h2 {
+      color: var(--cv-primary);
+      font-size: 1rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1.5px solid #e2e8f0;
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+    }
+    .theme-17 .cv-h2::after {
+      content: "";
+      flex-grow: 1;
+      height: 2px;
+      background: var(--cv-accent);
+      border-radius: 1px;
+    }
+
+    /* 18. Triple-Column Compact Executive */
+    .theme-18 {
+      padding: calc(16mm * var(--cv-spacing-scale));
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      column-gap: 16px;
+    }
+    .theme-18 .header-span { grid-column: 1 / -1; }
+    .theme-18 .cv-h2 {
+      color: var(--cv-primary);
+      font-size: 0.95rem;
+      font-weight: 700;
+      border-bottom: 1.5px solid var(--cv-primary);
+      padding-bottom: 2px;
+      margin-bottom: 6px;
+    }
+
+    /* 19. Nordic Borderless Pure Clean */
+    .theme-19 {
+      padding: calc(20mm * var(--cv-spacing-scale));
+      background: #fafaf9;
+    }
+    .theme-19 .cv-h2 {
+      color: var(--cv-primary);
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    /* 20. Matrix Engineering Blueprint */
+    .theme-20 {
+      padding: calc(18mm * var(--cv-spacing-scale));
+      background: #ffffff;
+      border-left: 8px solid var(--cv-primary);
+      border-right: 8px solid var(--cv-accent);
+    }
+    .theme-20 .cv-h2 {
+      color: var(--cv-primary);
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      border-bottom: 2px dashed var(--cv-accent);
+      padding-bottom: 3px;
+    }
+
+    /* Common Components inside CV */
+    .item-entry { margin-bottom: calc(0.55rem * var(--cv-spacing-scale)); }
+    .item-head { display: flex; justify-content: space-between; font-weight: 700; font-size: 0.9rem; }
+    .item-sub { display: flex; justify-content: space-between; color: #4b5563; font-size: 0.8rem; font-style: italic; margin-bottom: 0.15rem; }
+    .item-body { font-size: 0.82rem; line-height: 1.4; }
+    .skill-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+    .skill-pill { background: rgba(0, 0, 0, 0.06); padding: 2px 7px; border-radius: 4px; font-size: 0.78rem; font-weight: 600; }
+    .cv-avatar { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; box-shadow: 0 4px 8px rgba(0,0,0,0.15); flex-shrink: 0; }
+    .meta-list { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.78rem; margin-top: 3px; }
+
+    /* Mobile Bottom Quick Actions Drawer */
+    .mobile-bottom-bar {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(15, 23, 42, 0.96);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      padding: 0.5rem 0.8rem;
+      z-index: 1000;
+      justify-content: space-around;
+      align-items: center;
+    }
+    .mobile-bottom-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .mobile-bottom-btn i { font-size: 1.05rem; color: var(--accent); }
+    .mobile-bottom-btn:hover, .mobile-bottom-btn:active { color: #fff; }
+
+    /* Footer Branding Component */
+    footer.app-footer {
+      background: rgba(15, 23, 42, 0.98);
+      border-top: 1px solid var(--border);
+      padding: 0.9rem 1.2rem;
+      text-align: center;
+      margin-top: auto;
+      z-index: 100;
+    }
+    .footer-inner {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 1rem;
+      border-radius: 9999px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+    .footer-inner span.author {
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    /* Print & Export Cleanup */
+    @media print {
+      body { background: #fff !important; }
+      .header-fixed-wrap, .studio-sidebar, .mobile-bottom-bar, footer.app-footer, .no-print {
+        display: none !important;
+      }
+      .cv-sheet { box-shadow: none !important; max-height: none !important; transform: none !important; }
+      .sheet-zoom-viewport { transform: none !important; }
+    }
+
+    /* ========================================================
+       MOBILE-FIRST RESPONSIVE ENGINE (SMARTPHONE PERFECTION)
+       ======================================================== */
+    @media (max-width: 992px) {
+      .studio-layout { flex-direction: column; }
+      .studio-sidebar {
+        width: 100%;
+        position: static;
+        max-height: none;
+        order: 2; /* Put editor sidebar below sheet on tablets & phones */
+      }
+      .canvas-wrapper { order: 1; }
+      .mobile-bottom-bar { display: flex; }
+      footer.app-footer { padding-bottom: 4rem; } /* Avoid overlay with mobile bottom bar */
+    }
+
+    @media (max-width: 768px) {
+      header.app-bar { padding: 0.5rem 0.8rem; }
+      .brand span { display: none; } /* Show icon only to save space */
+      .app-steps span { display: none; } /* Show step icons only */
+      .step-badge { padding: 0.35rem 0.6rem; }
+      .view-container { padding: 0.8rem; }
+      .wizard-card { padding: 1rem; }
+      .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.8rem; }
+      .tool-btn { width: 36px; height: 36px; } /* Larger touch targets for mobile thumbs */
+      .subbar-group { gap: 0.25rem; }
+      
+      /* Display handles inline for touch on active editable items */
+      .section-handle { display: flex; top: -14px; right: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Fixed Top Header & Navigation Sub-Bar -->
+  <div class="header-fixed-wrap">
+    <header class="app-bar">
+      <div class="brand">
+        <i class="fa-solid fa-file-invoice"></i>
+        <span>ProCV Studio</span>
+      </div>
+      
+      <nav class="app-steps">
+        <div class="step-badge active" id="stepBtn-1" onclick="switchView(1)">
+          <i class="fa-solid fa-list-check"></i>
+          <span>1. Details</span>
+        </div>
+        <div class="step-badge" id="stepBtn-2" onclick="switchView(2)">
+          <i class="fa-solid fa-shapes"></i>
+          <span>2. Blueprint</span>
+        </div>
+        <div class="step-badge" id="stepBtn-3" onclick="switchView(3)">
+          <i class="fa-solid fa-pen-ruler"></i>
+          <span>3. Customizer</span>
+        </div>
+      </nav>
+
+      <div>
+        <button class="btn btn-outline" style="padding: 0.35rem 0.75rem; font-size: 0.78rem;" onclick="loadSampleData()">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Demo
+        </button>
+      </div>
+    </header>
+
+    <!-- Top Sub-Bar for History & Typography (Directly below header) -->
+    <div class="app-subbar no-print" id="studioSubbar">
+      <div class="subbar-group">
+        <button class="tool-btn highlight" onclick="undo()" title="Undo (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
+        <button class="tool-btn highlight" onclick="redo()" title="Redo (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i></button>
+      </div>
+      
+      <div class="subbar-divider"></div>
+
+      <div class="subbar-group">
+        <button class="tool-btn" onclick="execCmd('bold')" title="Bold"><i class="fa-solid fa-bold"></i></button>
+        <button class="tool-btn" onclick="execCmd('italic')" title="Italic"><i class="fa-solid fa-italic"></i></button>
+        <button class="tool-btn" onclick="execCmd('underline')" title="Underline"><i class="fa-solid fa-underline"></i></button>
+      </div>
+
+      <div class="subbar-divider"></div>
+
+      <div class="subbar-group">
+        <button class="tool-btn" onclick="execCmd('insertUnorderedList')" title="Bullet List"><i class="fa-solid fa-list-ul"></i></button>
+        <button class="tool-btn" onclick="execCmd('insertOrderedList')" title="Numbered List"><i class="fa-solid fa-list-ol"></i></button>
+        <button class="tool-btn" onclick="insertCustomHeading()" title="Add Custom Heading"><i class="fa-solid fa-heading"></i></button>
+      </div>
+
+      <div class="subbar-divider"></div>
+
+      <div class="subbar-group">
+        <button class="btn btn-primary" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;" onclick="autoFitToOnePage()">
+          <i class="fa-solid fa-compress"></i> Auto-Fit 1-Page
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       STEP 1: DETAILS INTAKE FORM
+       ======================================================== -->
+  <main id="view-1" class="view-container active">
+    <div class="wizard-card">
+      <div class="wizard-header">
+        <div>
+          <h2>Enter Your Credentials</h2>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 3px;">
+            Fill in your details or skip ahead to customize on the live canvas.
+          </p>
+        </div>
+        <button class="btn btn-secondary" onclick="skipWizard()">
+          Skip to Templates <i class="fa-solid fa-forward"></i>
+        </button>
+      </div>
+
+      <!-- Photo & Background Remover -->
+      <section class="form-section">
+        <h3><i class="fa-solid fa-camera"></i> Profile Picture & Background Remover</h3>
+        <div class="photo-studio">
+          <div class="photo-preview-wrap" id="avatarPreviewContainer">
+            <i class="fa-solid fa-user" id="avatarPlaceholder" style="font-size: 2rem; color: #64748b;"></i>
+            <img id="avatarImage" src="" alt="Profile" style="display: none;" />
+          </div>
+          <div>
+            <div style="display: flex; gap: 0.4rem; margin-bottom: 0.4rem;">
+              <label class="btn btn-primary" style="cursor: pointer; font-size: 0.8rem; padding: 0.45rem 0.85rem;">
+                <i class="fa-solid fa-upload"></i> Upload
+                <input type="file" id="photoInput" accept="image/*" style="display: none;" onchange="handlePhotoUpload(event)" />
+              </label>
+              <button class="btn btn-danger" onclick="removePhoto()" id="delPhotoBtn" style="display: none; padding: 0.45rem 0.85rem;">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+            <button class="btn btn-outline" id="bgRemoveBtn" onclick="removeBackground()" style="display: none; font-size: 0.78rem;">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Strip Background
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Personal Info -->
+      <section class="form-section">
+        <h3><i class="fa-solid fa-id-card"></i> 1. Personal Details</h3>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Full Name *</label>
+            <input type="text" id="in_fullName" class="form-control" placeholder="Alexander Mitchell, PMP" />
+          </div>
+          <div class="form-group">
+            <label>Professional Title *</label>
+            <input type="text" id="in_jobTitle" class="form-control" placeholder="Lead Enterprise Solutions Architect" />
+          </div>
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" id="in_email" class="form-control" placeholder="alex.mitchell@workmail.com" />
+          </div>
+          <div class="form-group">
+            <label>Phone *</label>
+            <input type="text" id="in_phone" class="form-control" placeholder="+1 (555) 234-5678" />
+          </div>
+          <div class="form-group">
+            <label>Address / Location</label>
+            <input type="text" id="in_address" class="form-control" placeholder="Chicago, IL, United States" />
+          </div>
+          <div class="form-group">
+            <label>Portfolio / LinkedIn</label>
+            <input type="text" id="in_links" class="form-control" placeholder="linkedin.com/in/alexmitchell" />
+          </div>
+          <div class="form-group">
+            <label>Nationality & Status (Optional)</label>
+            <input type="text" id="in_civil" class="form-control" placeholder="US Citizen | Clearances Active" />
+          </div>
+        </div>
+      </section>
+
+      <!-- Profile Summary -->
+      <section class="form-section">
+        <h3><i class="fa-solid fa-align-left"></i> 2. Professional Profile Summary</h3>
+        <div class="form-group">
+          <textarea id="in_summary" class="form-control" rows="3" placeholder="Performance-driven Leader with 10+ years driving digital transformation..."></textarea>
+        </div>
+      </section>
+
+      <!-- Experience -->
+      <section class="form-section">
+        <h3><i class="fa-solid fa-briefcase"></i> 3. Work Experience</h3>
+        <div id="experienceContainer"></div>
+        <button class="btn btn-outline" onclick="addExperienceField()" style="margin-top: 0.4rem; font-size: 0.8rem;">
+          <i class="fa-solid fa-plus"></i> Add Position
+        </button>
+      </section>
+
+      <!-- Education -->
+      <section class="form-section">
+        <h3><i class="fa-solid fa-graduation-cap"></i> 4. Education</h3>
+        <div id="educationContainer"></div>
+        <button class="btn btn-outline" onclick="addEducationField()" style="margin-top: 0.4rem; font-size: 0.8rem;">
+          <i class="fa-solid fa-plus"></i> Add Degree
+        </button>
+      </section>
+
+      <!-- Skills -->
+      <section class="form-section">
+        <h3><i class="fa-solid fa-screwdriver-wrench"></i> 5. Skills</h3>
+        <div class="form-group">
+          <input type="text" id="in_skills" class="form-control" placeholder="Cloud Architecture, Kubernetes, Docker, Leadership, Terraform" />
+        </div>
+      </section>
+
+      <!-- Awards & References -->
+      <section class="form-section">
+        <h3><i class="fa-solid fa-award"></i> 6. Certifications & Awards</h3>
+        <div class="form-group">
+          <textarea id="in_awards" class="form-control" rows="2" placeholder="AWS Certified Solutions Architect (2024)&#10;Project Management Professional (PMP)"></textarea>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h3><i class="fa-solid fa-users"></i> 7. References</h3>
+        <div class="form-group">
+          <textarea id="in_references" class="form-control" rows="2" placeholder="Sarah Jenkins, VP of Engineering at CloudCore (s.jenkins@cloudcore.com)"></textarea>
+        </div>
+      </section>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+        <button class="btn btn-primary" style="padding: 0.75rem 1.8rem; width: 100%; max-width: 300px;" onclick="saveAndProceed()">
+          Select Blueprint Template <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ========================================================
+       STEP 2: 20 RADICALLY DIFFERENT BLUEPRINTS
+       ======================================================== -->
+  <main id="view-2" class="view-container">
+    <div style="text-align: center; margin-bottom: 1.2rem;">
+      <h2>Choose From 20 Architectural Blueprints</h2>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">
+        Pick any layout. Each adapts dynamically to single-column or multi-column grids.
+      </p>
+    </div>
+
+    <div class="gallery-grid" id="templateGallery"></div>
+  </main>
+
+  <!-- ========================================================
+       STEP 3: WYSIWYG STUDIO PLATFORM
+       ======================================================== -->
+  <main id="view-3" class="view-container">
+    <div class="studio-layout">
+      
+      <!-- Studio Sidebar Controls -->
+      <aside class="studio-sidebar no-print" id="studioSidebarPanel">
+        
+        <!-- Dedicated Export Box -->
+        <div>
+          <div class="editor-section-title"><i class="fa-solid fa-file-export"></i> Isolated CV Export</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;">
+            <button class="btn btn-primary" onclick="exportOnlyCVToPDF()">
+              <i class="fa-solid fa-file-pdf"></i> Save PDF
+            </button>
+            <button class="btn btn-secondary" onclick="exportOnlyCVToImage()">
+              <i class="fa-solid fa-image"></i> Save Image
+            </button>
+          </div>
+        </div>
+
+        <!-- Strict Spacing & 1-Page Optimization Tools -->
+        <div>
+          <div class="editor-section-title"><i class="fa-solid fa-compress"></i> 1-Page Fit & Spacing</div>
+          <div style="display: flex; flex-direction: column; gap: 0.45rem;">
+            <button class="btn btn-outline" style="font-size: 0.8rem; justify-content: center; background: #1e293b;" onclick="autoFitToOnePage()">
+              <i class="fa-solid fa-wand-magic-sparkles" style="color:var(--accent);"></i> Auto-Fit Content to 1 Page
+            </button>
+            <div class="form-group" style="margin-bottom:0;">
+              <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+                <span>Compact Spacing</span>
+                <span id="spacingLabel">1.0x</span>
+                <span>Expanded</span>
+              </div>
+              <input type="range" id="spacingSlider" min="0.65" max="1.25" step="0.05" value="1.0" oninput="adjustGlobalSpacing(this.value)" style="width:100%; accent-color:var(--accent);" />
+            </div>
+            <div style="display: flex; gap: 0.4rem; margin-top: 3px;">
+              <button class="btn btn-outline" style="flex:1; font-size:0.75rem;" onclick="toggleStrictMode(this)" id="strictModeBtn">
+                <i class="fa-solid fa-lock"></i> Strict 1-Page: ON
+              </button>
+              <button class="btn btn-outline" style="flex:1; font-size:0.75rem;" onclick="addSecondPage()">
+                <i class="fa-solid fa-file-circle-plus"></i> + Page 2
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section Dropdown Adder -->
+        <div>
+          <div class="editor-section-title"><i class="fa-solid fa-plus-circle"></i> Add Section from List</div>
+          <div style="display: flex; gap: 0.4rem;">
+            <select id="sectionSelectorDropdown" class="form-control" style="font-size:0.8rem; padding: 0.45rem;">
+              <option value="summary">Profile Summary</option>
+              <option value="experience">Work Experience Block</option>
+              <option value="education">Education Block</option>
+              <option value="skills">Skills & Tools</option>
+              <option value="awards">Certifications & Honors</option>
+              <option value="references">Professional References</option>
+              <option value="custom">Custom Blank Section</option>
+            </select>
+            <button class="btn btn-primary" style="padding: 0.45rem 0.85rem;" onclick="addSelectedSectionFromDropdown()">
+              <i class="fa-solid fa-plus"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Curated Professional Palettes Studio -->
+        <div>
+          <div class="editor-section-title"><i class="fa-solid fa-swatchbook"></i> Professional Color Palettes</div>
+          <div class="palette-grid">
+            <button class="palette-btn" onclick="applyPresetPalette('#1e3a8a', '#3b82f6')">
+              <span class="palette-dot" style="background:#1e3a8a;"></span> Navy
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#065f46', '#10b981')">
+              <span class="palette-dot" style="background:#065f46;"></span> Emerald
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#881337', '#e11d48')">
+              <span class="palette-dot" style="background:#881337;"></span> Bordeaux
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#334155', '#64748b')">
+              <span class="palette-dot" style="background:#334155;"></span> Slate
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#0e7490', '#06b6d4')">
+              <span class="palette-dot" style="background:#0e7490;"></span> Teal
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#18181b', '#f59e0b')">
+              <span class="palette-dot" style="background:#18181b;"></span> Amber
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#4338ca', '#818cf8')">
+              <span class="palette-dot" style="background:#4338ca;"></span> Indigo
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#581c87', '#c084fc')">
+              <span class="palette-dot" style="background:#581c87;"></span> Amethyst
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#0f766e', '#2dd4bf')">
+              <span class="palette-dot" style="background:#0f766e;"></span> Glacier
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#7c2d12', '#fb923c')">
+              <span class="palette-dot" style="background:#7c2d12;"></span> Bronze
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#831843', '#f472b6')">
+              <span class="palette-dot" style="background:#831843;"></span> Rose Gold
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#14532d', '#4ade80')">
+              <span class="palette-dot" style="background:#14532d;"></span> Forest
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#701a75', '#e879f9')">
+              <span class="palette-dot" style="background:#701a75;"></span> Orchid
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#1e293b', '#38bdf8')">
+              <span class="palette-dot" style="background:#1e293b;"></span> Cyber
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#713f12', '#eab308')">
+              <span class="palette-dot" style="background:#713f12;"></span> Tuscan
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#991b1b', '#f87171')">
+              <span class="palette-dot" style="background:#991b1b;"></span> Crimson
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#3f3f46', '#a1a1aa')">
+              <span class="palette-dot" style="background:#3f3f46;"></span> Carbon
+            </button>
+            <button class="palette-btn" onclick="applyPresetPalette('#0284c7', '#38bdf8')">
+              <span class="palette-dot" style="background:#0284c7;"></span> Sapphire
+            </button>
+          </div>
+
+          <!-- Custom Color Picker -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;">
+            <div class="form-group">
+              <label>Primary</label>
+              <input type="color" id="primaryColorPicker" value="#1e3a8a" class="form-control" style="height:36px; padding:2px;" onchange="updateThemeColors()" />
+            </div>
+            <div class="form-group">
+              <label>Accent</label>
+              <input type="color" id="accentColorPicker" value="#3b82f6" class="form-control" style="height:36px; padding:2px;" onchange="updateThemeColors()" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Typography Controller -->
+        <div>
+          <div class="editor-section-title"><i class="fa-solid fa-font"></i> Typography</div>
+          <select id="fontSelector" class="form-control" onchange="changeFontFamily(this.value)">
+            <option value="'Plus Jakarta Sans', sans-serif">Plus Jakarta Sans (Modern)</option>
+            <option value="'Inter', sans-serif">Inter (Clean UI)</option>
+            <option value="'Poppins', sans-serif">Poppins (Contemporary)</option>
+            <option value="'Merriweather', serif">Merriweather (Classic Serif)</option>
+            <option value="'Cinzel', serif">Cinzel (Executive Serif)</option>
+            <option value="'JetBrains Mono', monospace">JetBrains Mono (Developer)</option>
+            <option value="'Roboto', sans-serif">Roboto (Corporate)</option>
+          </select>
+          <div class="form-group" style="margin-top: 0.4rem;">
+            <label>Load Custom Font File</label>
+            <input type="file" id="customFontInput" class="form-control" accept=".ttf,.otf,.woff,.woff2" onchange="handleCustomFont(event)" />
+          </div>
+        </div>
+
+        <button class="btn btn-secondary" style="width: 100%; margin-top: 0.4rem;" onclick="switchView(2)">
+          <i class="fa-solid fa-shapes"></i> Switch Blueprint
+        </button>
+      </aside>
+
+      <!-- Center CV Workspace Area (Clean & Mobile Scaled) -->
+      <section class="canvas-wrapper" id="canvasScrollArea">
+        <div class="sheet-zoom-viewport" id="sheetViewport">
+          <!-- Rendered CV Sheet Canvas -->
+          <div id="cv-paper" class="cv-sheet theme-1">
+            <div class="page-break-indicator">
+              <span class="page-break-tag"><i class="fa-solid fa-scissors"></i> End of Page 1</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Mobile Bottom Quick Actions Drawer -->
+  <div class="mobile-bottom-bar no-print" id="mobileDrawer">
+    <button class="mobile-bottom-btn" onclick="scrollToSidebar()">
+      <i class="fa-solid fa-palette"></i>
+      <span>Settings</span>
+    </button>
+    <button class="mobile-bottom-btn" onclick="autoFitToOnePage()">
+      <i class="fa-solid fa-compress"></i>
+      <span>1-Page Fit</span>
+    </button>
+    <button class="mobile-bottom-btn" onclick="exportOnlyCVToPDF()">
+      <i class="fa-solid fa-file-pdf"></i>
+      <span>Save PDF</span>
+    </button>
+    <button class="mobile-bottom-btn" onclick="switchView(2)">
+      <i class="fa-solid fa-table-cells"></i>
+      <span>Templates</span>
+    </button>
+  </div>
+
+  <!-- Branded Professional Footer -->
+  <footer class="app-footer no-print">
+    <div class="footer-inner">
+      <i class="fa-solid fa-code"></i>
+      <span>Designed &amp; Developed by <span class="author">Malsha Vihanga</span></span>
+    </div>
+  </footer>
+
+  <script>
+    // Global State Store
+    const state = {
+      currentTemplate: 1,
+      photoDataUrl: '',
+      activePrimary: '#1e3a8a',
+      activeAccent: '#3b82f6',
+      activeBg: '#ffffff',
+      activeText: '#1f2937',
+      isStrictOnePage: true,
+      spacingScale: 1.0,
+      cvData: {
+        fullName: 'Alexander Mitchell, PMP',
+        jobTitle: 'Senior Enterprise Solutions Architect',
+        email: 'alex.mitchell@workmail.com',
+        phone: '+1 (555) 234-5678',
+        address: 'Chicago, IL, United States',
+        links: 'linkedin.com/in/alexmitchell',
+        civil: 'US Citizen | Security Clearance Active',
+        summary: 'Strategic Enterprise Architect with 10+ years driving cloud platforms, microservices transformations, and guiding multi-disciplinary engineering groups. Delivered $14M+ in infrastructure optimizations while sustaining 99.999% availability.',
+        experiences: [
+          {
+            title: 'Lead Solutions Architect',
+            company: 'NextGen Cloud Dynamics',
+            dates: '2021 - Present',
+            bullets: 'Spearheaded migration of 40+ services to AWS Kubernetes clusters.<br>Mentored 25+ senior engineers in event-driven asynchronous architectures.'
+          },
+          {
+            title: 'Senior Systems Engineer',
+            company: 'Vanguard Software Labs',
+            dates: '2017 - 2021',
+            bullets: 'Architected distributed messaging backbones handling 1.8B requests/day using Kafka and Go.<br>Decreased MTTR by 42% through unified distributed tracing.'
+          }
+        ],
+        educations: [
+          {
+            degree: 'Master of Science in Computer Science',
+            school: 'Northwestern University',
+            dates: '2015 - 2017'
+          },
+          {
+            degree: 'B.S. in Electrical & Computer Engineering',
+            school: 'Univ. of Illinois Urbana-Champaign',
+            dates: '2011 - 2015'
+          }
+        ],
+        skills: ['Cloud (AWS / GCP)', 'Kubernetes & Docker', 'Terraform (IaC)', 'Microservices Design', 'Distributed Systems', 'DevOps & CI/CD', 'Cybersecurity Compliance'],
+        awards: 'AWS Certified Solutions Architect - Professional (2024)\nProject Management Professional (PMP)® - PMI Institute',
+        references: 'Marcus Vance, CTO at NextGen Cloud Dynamics (m.vance@nextgencloud.com)\nDr. Elena Rostova, Chair of Computing at Northwestern'
+      }
+    };
+
+    // History Snapshots for Full Undo/Redo Engine
+    const historyStack = [];
+    let historyIndex = -1;
+    const MAX_HISTORY = 30;
+
+    function saveHistorySnapshot() {
+      const paper = document.getElementById('cv-paper');
+      if (!paper) return;
+
+      if (historyIndex < historyStack.length - 1) {
+        historyStack.splice(historyIndex + 1);
+      }
+
+      historyStack.push(paper.innerHTML);
+      if (historyStack.length > MAX_HISTORY) {
+        historyStack.shift();
+      } else {
+        historyIndex++;
+      }
+    }
+
+    function undo() {
+      if (historyIndex > 0) {
+        historyIndex--;
+        const paper = document.getElementById('cv-paper');
+        paper.innerHTML = historyStack[historyIndex];
+        bindDragAndDropEvents();
+      } else {
+        alert('No further undo history available.');
+      }
+    }
+
+    function redo() {
+      if (historyIndex < historyStack.length - 1) {
+        historyIndex++;
+        const paper = document.getElementById('cv-paper');
+        paper.innerHTML = historyStack[historyIndex];
+        bindDragAndDropEvents();
+      } else {
+        alert('No further redo history available.');
+      }
+    }
+
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          redo();
+        } else {
+          e.preventDefault();
+          undo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    });
+
+    // 20 Distinct Blueprints Architecture Metadata
+    const blueprints = [
+      { id: 1, name: 'Modern Split Header', tag: 'Header Banner', class: 'theme-1', font: "'Plus Jakarta Sans', sans-serif" },
+      { id: 2, name: 'Strict Left Sidebar Grid', tag: '30/70 Left Column', class: 'theme-2', font: "'Inter', sans-serif" },
+      { id: 3, name: 'Tech Monospace Matrix', tag: 'Terminal Window', class: 'theme-3', font: "'JetBrains Mono', monospace" },
+      { id: 4, name: 'Swiss Minimalist', tag: 'Editorial Bold Rules', class: 'theme-4', font: "'Inter', sans-serif" },
+      { id: 5, name: 'Classic Ivy Academic', tag: 'ATS Traditional', class: 'theme-5', font: "'Merriweather', serif" },
+      { id: 6, name: 'Right Sidebar Magazine', tag: 'Asymmetric Right', class: 'theme-6', font: "'Poppins', sans-serif" },
+      { id: 7, name: 'Executive Modular Cards', tag: 'Carded Blocks', class: 'theme-7', font: "'Roboto', sans-serif" },
+      { id: 8, name: 'Metro Connected Timeline', tag: 'Vertical Line Nodes', class: 'theme-8', font: "'Plus Jakarta Sans', sans-serif" },
+      { id: 9, name: 'Infographic Top Ribbon', tag: '2-Col Split Footer', class: 'theme-9', font: "'Montserrat', sans-serif" },
+      { id: 10, name: 'Asymmetric Offset Line', tag: 'Modern Bold Accent', class: 'theme-10', font: "'Plus Jakarta Sans', sans-serif" },
+      { id: 11, name: 'Hexagon Tech Metrics', tag: 'Metrics & Data Badges', class: 'theme-11', font: "'JetBrains Mono', monospace" },
+      { id: 12, name: 'Split Charcoal Monogram', tag: 'Typographic Monogram', class: 'theme-12', font: "'Montserrat', sans-serif" },
+      { id: 13, name: 'Executive Double Ribbon', tag: 'Two-Tone Stripe', class: 'theme-13', font: "'Plus Jakarta Sans', sans-serif" },
+      { id: 14, name: 'Creative Portfolio Showcase', tag: 'Modern Asymmetry', class: 'theme-14', font: "'Poppins', sans-serif" },
+      { id: 15, name: 'Swiss Dual-Column Grid', tag: 'Balanced 50/50 Grid', class: 'theme-15', font: "'Inter', sans-serif" },
+      { id: 16, name: 'Harvard Clean Professional', tag: 'ATS Single-Column', class: 'theme-16', font: "'Times New Roman', Times, serif" },
+      { id: 17, name: 'Silicon Valley Product Leader', tag: 'Modern Accent Banners', class: 'theme-17', font: "'Plus Jakarta Sans', sans-serif" },
+      { id: 18, name: 'Triple-Column Compact', tag: 'High-Density 3-Column', class: 'theme-18', font: "'Roboto', sans-serif" },
+      { id: 19, name: 'Nordic Borderless Pure Clean', tag: 'Spacious Minimalist', class: 'theme-19', font: "'Inter', sans-serif" },
+      { id: 20, name: 'Matrix Engineering Blueprint', tag: 'Dual Border Grid', class: 'theme-20', font: "'JetBrains Mono', monospace" }
+    ];
+
+    window.addEventListener('DOMContentLoaded', () => {
+      buildExperienceForm();
+      buildEducationForm();
+      renderGallery();
+      applyRootStyles(state.activePrimary, state.activeAccent, state.activeBg, state.activeText);
+      window.addEventListener('resize', updateResponsiveSheetScale);
+    });
+
+    // Mobile Adaptive Scale Calculation
+    function updateResponsiveSheetScale() {
+      const viewport = document.getElementById('sheetViewport');
+      const paper = document.getElementById('cv-paper');
+      if (!viewport || !paper) return;
+
+      const windowWidth = window.innerWidth;
+      const targetA4WidthPx = 794; // 210mm in standard 96dpi screen pixels
+
+      if (windowWidth < 850) {
+        // Calculate proportional scale to fit mobile screen with 15px edge padding
+        const availableWidth = windowWidth - 24;
+        const scale = Math.min(1, availableWidth / targetA4WidthPx);
+        paper.style.transform = `scale(${scale})`;
+        
+        // Compensate bounding box height collapse after CSS scale
+        const originalHeight = paper.offsetHeight || 1123;
+        viewport.style.height = `${originalHeight * scale + 40}px`;
+      } else {
+        paper.style.transform = 'none';
+        viewport.style.height = 'auto';
+      }
+    }
+
+    function scrollToSidebar() {
+      const sidebar = document.getElementById('studioSidebarPanel');
+      if (sidebar) sidebar.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function switchView(num) {
+      document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
+      document.querySelectorAll('.step-badge').forEach(b => b.classList.remove('active'));
+      document.getElementById(`view-${num}`).classList.add('active');
+      document.getElementById(`stepBtn-${num}`).classList.add('active');
+
+      const subbar = document.getElementById('studioSubbar');
+      if (num === 3) {
+        subbar.classList.add('active');
+        renderCVDocument();
+        setTimeout(updateResponsiveSheetScale, 50);
+      } else {
+        subbar.classList.remove('active');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Dynamic Experience form builder
+    function buildExperienceForm() {
+      const c = document.getElementById('experienceContainer');
+      c.innerHTML = '';
+      state.cvData.experiences.forEach((exp, idx) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'background: #0f172a; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #334155; position: relative;';
+        item.innerHTML = `
+          <div style="position: absolute; right: 8px; top: 8px;">
+            <button class="btn btn-outline" style="padding: 2px 6px; font-size: 0.75rem;" onclick="removeExperience(${idx})"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="grid-2">
+            <div class="form-group"><label>Job Title</label><input type="text" class="form-control exp-title" value="${exp.title}" /></div>
+            <div class="form-group"><label>Company</label><input type="text" class="form-control exp-company" value="${exp.company}" /></div>
+            <div class="form-group"><label>Dates</label><input type="text" class="form-control exp-dates" value="${exp.dates}" /></div>
+          </div>
+          <div class="form-group" style="margin-top:6px;">
+            <label>Key Responsibilities</label>
+            <textarea class="form-control exp-bullets" rows="2">${exp.bullets}</textarea>
+          </div>
+        `;
+        c.appendChild(item);
+      });
+    }
+
+    function addExperienceField() {
+      state.cvData.experiences.push({ title: 'Senior Role', company: 'Global Tech', dates: '2019 - 2021', bullets: 'Directed mission-critical systems and enhanced workflow pipelines.' });
+      buildExperienceForm();
+    }
+
+    function removeExperience(idx) {
+      state.cvData.experiences.splice(idx, 1);
+      buildExperienceForm();
+    }
+
+    // Dynamic Education form builder
+    function buildEducationForm() {
+      const c = document.getElementById('educationContainer');
+      c.innerHTML = '';
+      state.cvData.educations.forEach((edu, idx) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'background: #0f172a; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #334155; position: relative;';
+        item.innerHTML = `
+          <div style="position: absolute; right: 8px; top: 8px;">
+            <button class="btn btn-outline" style="padding: 2px 6px; font-size: 0.75rem;" onclick="removeEducation(${idx})"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="grid-2">
+            <div class="form-group"><label>Degree</label><input type="text" class="form-control edu-degree" value="${edu.degree}" /></div>
+            <div class="form-group"><label>University / School</label><input type="text" class="form-control edu-school" value="${edu.school}" /></div>
+            <div class="form-group"><label>Dates</label><input type="text" class="form-control edu-dates" value="${edu.dates}" /></div>
+          </div>
+        `;
+        c.appendChild(item);
+      });
+    }
+
+    function addEducationField() {
+      state.cvData.educations.push({ degree: 'Degree Program', school: 'University Institute', dates: '2012 - 2016' });
+      buildEducationForm();
+    }
+
+    function removeEducation(idx) {
+      state.cvData.educations.splice(idx, 1);
+      buildEducationForm();
+    }
+
+    function loadSampleData() {
+      document.getElementById('in_fullName').value = state.cvData.fullName;
+      document.getElementById('in_jobTitle').value = state.cvData.jobTitle;
+      document.getElementById('in_email').value = state.cvData.email;
+      document.getElementById('in_phone').value = state.cvData.phone;
+      document.getElementById('in_address').value = state.cvData.address;
+      document.getElementById('in_links').value = state.cvData.links;
+      document.getElementById('in_civil').value = state.cvData.civil;
+      document.getElementById('in_summary').value = state.cvData.summary;
+      document.getElementById('in_skills').value = state.cvData.skills.join(', ');
+      document.getElementById('in_awards').value = state.cvData.awards;
+      document.getElementById('in_references').value = state.cvData.references;
+      buildExperienceForm();
+      buildEducationForm();
+      alert('Sample profile data loaded!');
+    }
+
+    function skipWizard() {
+      saveWizardValues();
+      switchView(2);
+    }
+
+    function saveAndProceed() {
+      saveWizardValues();
+      switchView(2);
+    }
+
+    function saveWizardValues() {
+      const fn = document.getElementById('in_fullName').value.trim();
+      if (fn) state.cvData.fullName = fn;
+      state.cvData.jobTitle = document.getElementById('in_jobTitle').value.trim() || state.cvData.jobTitle;
+      state.cvData.email = document.getElementById('in_email').value.trim() || state.cvData.email;
+      state.cvData.phone = document.getElementById('in_phone').value.trim() || state.cvData.phone;
+      state.cvData.address = document.getElementById('in_address').value.trim() || state.cvData.address;
+      state.cvData.links = document.getElementById('in_links').value.trim() || state.cvData.links;
+      state.cvData.civil = document.getElementById('in_civil').value.trim() || state.cvData.civil;
+      state.cvData.summary = document.getElementById('in_summary').value.trim() || state.cvData.summary;
+
+      const sk = document.getElementById('in_skills').value.trim();
+      if (sk) state.cvData.skills = sk.split(',').map(s => s.trim()).filter(Boolean);
+      state.cvData.awards = document.getElementById('in_awards').value.trim() || state.cvData.awards;
+      state.cvData.references = document.getElementById('in_references').value.trim() || state.cvData.references;
+
+      const expDoms = document.querySelectorAll('#experienceContainer > div');
+      if (expDoms.length > 0) {
+        state.cvData.experiences = [];
+        expDoms.forEach(d => {
+          state.cvData.experiences.push({
+            title: d.querySelector('.exp-title').value,
+            company: d.querySelector('.exp-company').value,
+            dates: d.querySelector('.exp-dates').value,
+            bullets: d.querySelector('.exp-bullets').value
+          });
+        });
+      }
+
+      const eduDoms = document.querySelectorAll('#educationContainer > div');
+      if (eduDoms.length > 0) {
+        state.cvData.educations = [];
+        eduDoms.forEach(d => {
+          state.cvData.educations.push({
+            degree: d.querySelector('.edu-degree').value,
+            school: d.querySelector('.edu-school').value,
+            dates: d.querySelector('.edu-dates').value
+          });
+        });
+      }
+    }
+
+    // Photo Handling
+    function handlePhotoUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        state.photoDataUrl = evt.target.result;
+        displayPhotoPreview(state.photoDataUrl);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function displayPhotoPreview(url) {
+      const img = document.getElementById('avatarImage');
+      const placeholder = document.getElementById('avatarPlaceholder');
+      img.src = url;
+      img.style.display = 'block';
+      placeholder.style.display = 'none';
+      document.getElementById('delPhotoBtn').style.display = 'inline-flex';
+      document.getElementById('bgRemoveBtn').style.display = 'inline-flex';
+    }
+
+    function removePhoto() {
+      state.photoDataUrl = '';
+      const img = document.getElementById('avatarImage');
+      const placeholder = document.getElementById('avatarPlaceholder');
+      img.src = '';
+      img.style.display = 'none';
+      placeholder.style.display = 'block';
+      document.getElementById('delPhotoBtn').style.display = 'none';
+      document.getElementById('bgRemoveBtn').style.display = 'none';
+    }
+
+    // Canvas background remover
+    function removeBackground() {
+      if (!state.photoDataUrl) return;
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = state.photoDataUrl;
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+        const cornerR = (data[0] + data[(canvas.width - 1) * 4]) / 2;
+        const cornerG = (data[1] + data[(canvas.width - 1) * 4 + 1]) / 2;
+        const cornerB = (data[2] + data[(canvas.width - 1) * 4 + 2]) / 2;
+
+        const tolerance = 50;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i+1], b = data[i+2];
+          const dist = Math.sqrt(Math.pow(r - cornerR, 2) + Math.pow(g - cornerG, 2) + Math.pow(b - cornerB, 2));
+          if (dist < tolerance) {
+            data[i+3] = 0;
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+        state.photoDataUrl = canvas.toDataURL('image/png');
+        displayPhotoPreview(state.photoDataUrl);
+        alert('Background filtered successfully.');
+      };
+    }
+
+    // Render Preview Tiles
+    function renderGallery() {
+      const g = document.getElementById('templateGallery');
+      g.innerHTML = '';
+      blueprints.forEach(b => {
+        const card = document.createElement('div');
+        card.className = `tpl-card ${b.id === state.currentTemplate ? 'selected' : ''}`;
+        card.onclick = () => {
+          state.currentTemplate = b.id;
+          renderGallery();
+          switchView(3);
+        };
+
+        let sampleHTML = '';
+        if (b.id === 1) { // Split Header
+          sampleHTML = `<div style="background:#1e3a8a; height:34%; border-radius:4px 4px 0 0; padding:6px; display:flex; justify-content:space-between; align-items:center;"><div><div style="background:#fff; height:6px; width:60px; border-radius:2px; margin-bottom:3px;"></div><div style="background:#93c5fd; height:3px; width:40px;"></div></div><div style="width:22px; height:22px; border-radius:50%; background:#fff;"></div></div><div style="background:#fff; height:66%; padding:6px;"><div style="background:#e2e8f0; height:3px; width:100%; margin-bottom:4px;"></div><div style="background:#f1f5f9; height:25px; border-radius:2px;"></div></div>`;
+        } else if (b.id === 2) { // Left 30/70 Sidebar
+          sampleHTML = `<div style="display:grid; grid-template-columns:32% 68%; height:100%;"><div style="background:#1e3a8a; padding:6px; display:flex; flex-direction:column; gap:4px; align-items:center;"><div style="width:18px; height:18px; border-radius:50%; background:#fff;"></div><div style="background:#93c5fd; height:3px; width:80%;"></div></div><div style="background:#fff; padding:6px;"><div style="background:#1e3a8a; height:4px; width:40%; margin-bottom:4px;"></div><div style="background:#e2e8f0; height:30px;"></div></div></div>`;
+        } else if (b.id === 3) { // Terminal Monospace
+          sampleHTML = `<div style="border:2px dashed #065f46; background:#0f172a; height:100%; padding:6px; font-family:monospace; color:#10b981; font-size:6px;"><div style="color:#38bdf8;">$ cat /cv/alex.txt</div><div style="color:#fff;">&gt; ALEX MITCHELL</div><div style="background:rgba(255,255,255,0.06); padding:3px; margin-top:4px;">+ Kubernetes Core Engine</div></div>`;
+        } else {
+          sampleHTML = `<div style="background:#fff; height:100%; border-top:5px solid #1e3a8a; padding:8px; display:flex; flex-direction:column; gap:5px;"><div style="background:#1e3a8a; height:6px; width:50%;"></div><div style="background:#e2e8f0; height:3px; width:80%;"></div><div style="background:#f1f5f9; height:30px; border-radius:2px;"></div></div>`;
+        }
+
+        card.innerHTML = `
+          <div class="tpl-preview-thumb">${sampleHTML}</div>
+          <div class="tpl-info">
+            <div>
+              <h4>${b.id}. ${b.name}</h4>
+              <span class="tpl-tag">${b.tag}</span>
+            </div>
+            <button class="btn btn-outline" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;">Select</button>
+          </div>
+        `;
+        g.appendChild(card);
+      });
+    }
+
+    // Color Management
+    function applyPresetPalette(prim, acc) {
+      state.activePrimary = prim;
+      state.activeAccent = acc;
+      document.getElementById('primaryColorPicker').value = prim;
+      document.getElementById('accentColorPicker').value = acc;
+      applyRootStyles(prim, acc, state.activeBg, state.activeText);
+    }
+
+    function updateThemeColors() {
+      state.activePrimary = document.getElementById('primaryColorPicker').value;
+      state.activeAccent = document.getElementById('accentColorPicker').value;
+      applyRootStyles(state.activePrimary, state.activeAccent, state.activeBg, state.activeText);
+    }
+
+    function applyRootStyles(p, a, bg, txt) {
+      const root = document.documentElement;
+      root.style.setProperty('--cv-primary', p);
+      root.style.setProperty('--cv-accent', a);
+      root.style.setProperty('--cv-bg', bg);
+      root.style.setProperty('--cv-text', txt);
+    }
+
+    function changeFontFamily(val) {
+      document.documentElement.style.setProperty('--cv-font', val);
+    }
+
+    function handleCustomFont(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const fontName = 'CustomFont_' + Date.now();
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const newFace = new FontFace(fontName, evt.target.result);
+        newFace.load().then(loaded => {
+          document.fonts.add(loaded);
+          document.documentElement.style.setProperty('--cv-font', fontName);
+          alert(`Font "${file.name}" loaded!`);
+        });
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // Spacing, Auto-Fit & 1-Page Constraint Engine
+    function adjustGlobalSpacing(val) {
+      state.spacingScale = parseFloat(val);
+      document.documentElement.style.setProperty('--cv-spacing-scale', val);
+      document.getElementById('spacingLabel').innerText = `${parseFloat(val).toFixed(2)}x`;
+      setTimeout(updateResponsiveSheetScale, 50);
+    }
+
+    function autoFitToOnePage() {
+      saveHistorySnapshot();
+      const paper = document.getElementById('cv-paper');
+      const maxAllowedPx = (297 * 96) / 25.4; // 297mm in pixels
+
+      let currentScale = 1.0;
+      for (let s = 1.0; s >= 0.65; s -= 0.05) {
+        adjustGlobalSpacing(s);
+        document.getElementById('spacingSlider').value = s;
+        if (paper.scrollHeight <= maxAllowedPx + 20) {
+          currentScale = s;
+          break;
+        }
+      }
+      setTimeout(updateResponsiveSheetScale, 60);
+      alert(`Auto-Fit applied! Scaled spacing to ${(currentScale).toFixed(2)}x for perfect single-page layout.`);
+    }
+
+    function toggleStrictMode(btn) {
+      const paper = document.getElementById('cv-paper');
+      state.isStrictOnePage = !state.isStrictOnePage;
+      if (state.isStrictOnePage) {
+        paper.classList.remove('allow-multi');
+        btn.innerHTML = `<i class="fa-solid fa-lock"></i> Strict 1-Page: ON`;
+      } else {
+        paper.classList.add('allow-multi');
+        btn.innerHTML = `<i class="fa-solid fa-unlock"></i> Strict 1-Page: OFF`;
+      }
+      setTimeout(updateResponsiveSheetScale, 50);
+    }
+
+    function addSecondPage() {
+      saveHistorySnapshot();
+      const viewport = document.getElementById('sheetViewport');
+      const existingPage2 = document.getElementById('cv-paper-page-2');
+      if (existingPage2) {
+        alert('Page 2 is already active.');
+        return;
+      }
+
+      const p2 = document.createElement('div');
+      p2.id = 'cv-paper-page-2';
+      p2.className = document.getElementById('cv-paper').className;
+      p2.style.marginTop = '20px';
+      p2.innerHTML = `
+        <div class="cv-section" draggable="true">
+          ${getSectionHandleHTML()}
+          <h2 class="cv-h2" contenteditable="true">Page 2 Continuation / Projects</h2>
+          <div contenteditable="true" style="font-size:0.85rem; line-height:1.45;">
+            • Detailed enterprise system deliverables, research publications, or patent portfolios...
+          </div>
+        </div>
+      `;
+      viewport.appendChild(p2);
+      bindDragAndDropEvents();
+      setTimeout(updateResponsiveSheetScale, 50);
+      alert('Page 2 created successfully! It will export cleanly alongside Page 1.');
+    }
+
+    function getSectionHandleHTML() {
+      return `
+        <div class="section-handle no-print">
+          <i class="fa-solid fa-arrow-up handle-btn" onclick="moveSectionUp(this)" title="Move Up"></i>
+          <i class="fa-solid fa-arrow-down handle-btn" onclick="moveSectionDown(this)" title="Move Down"></i>
+          <i class="fa-solid fa-copy handle-btn copy" onclick="duplicateSection(this)" title="Duplicate"></i>
+          <i class="fa-solid fa-trash handle-btn del" onclick="deleteSection(this)" title="Delete"></i>
+        </div>
+      `;
+    }
+
+    // Touch & Desktop Reordering Handlers
+    function moveSectionUp(btn) {
+      saveHistorySnapshot();
+      const sec = btn.closest('.cv-section');
+      if (sec.previousElementSibling && sec.previousElementSibling.classList.contains('cv-section')) {
+        sec.parentNode.insertBefore(sec, sec.previousElementSibling);
+      }
+    }
+
+    function moveSectionDown(btn) {
+      saveHistorySnapshot();
+      const sec = btn.closest('.cv-section');
+      if (sec.nextElementSibling && sec.nextElementSibling.classList.contains('cv-section')) {
+        sec.parentNode.insertBefore(sec.nextElementSibling, sec);
+      }
+    }
+
+    function duplicateSection(btn) {
+      saveHistorySnapshot();
+      const section = btn.closest('.cv-section');
+      const clone = section.cloneNode(true);
+      clone.classList.remove('dragging', 'drag-over');
+      section.parentNode.insertBefore(clone, section.nextSibling);
+      bindDragAndDropEvents();
+    }
+
+    function deleteSection(btn) {
+      if (confirm('Delete this section?')) {
+        saveHistorySnapshot();
+        btn.closest('.cv-section').remove();
+      }
+    }
+
+    function addSelectedSectionFromDropdown() {
+      saveHistorySnapshot();
+      const dropdown = document.getElementById('sectionSelectorDropdown');
+      const selectedType = dropdown.value;
+      const paper = document.getElementById('cv-paper');
+      
+      let targetContainer = paper;
+      if (state.currentTemplate === 2) {
+        targetContainer = paper.querySelector('.main-right') || paper;
+      } else if (state.currentTemplate === 6) {
+        targetContainer = paper.querySelector('.main-col') || paper;
+      }
+
+      const newSec = document.createElement('div');
+      newSec.className = 'cv-section';
+      newSec.draggable = true;
+
+      let innerContent = '';
+      if (selectedType === 'summary') {
+        innerContent = `
+          ${getSectionHandleHTML()}
+          <h2 class="cv-h2" contenteditable="true">Executive Profile</h2>
+          <p contenteditable="true" style="line-height:1.5; font-size:0.85rem;">Dynamic executive recognized for steering digital platform transformations.</p>
+        `;
+      } else if (selectedType === 'experience') {
+        innerContent = `
+          ${getSectionHandleHTML()}
+          <h2 class="cv-h2" contenteditable="true">Professional Experience</h2>
+          <div class="item-entry">
+            <div class="item-head"><span contenteditable="true">Principal Technical Lead</span><span contenteditable="true">2022 - Present</span></div>
+            <div class="item-sub"><span contenteditable="true">Global Solutions Group</span></div>
+            <div class="item-body" contenteditable="true">• Spearheaded zero-downtime microservices platform delivery.</div>
+          </div>
+        `;
+      } else if (selectedType === 'education') {
+        innerContent = `
+          ${getSectionHandleHTML()}
+          <h2 class="cv-h2" contenteditable="true">Academic Background</h2>
+          <div class="item-entry">
+            <div class="item-head"><span contenteditable="true">Executive Certificate in Leadership</span><span contenteditable="true">2023</span></div>
+            <div class="item-sub"><span contenteditable="true">Harvard Business Publishing</span></div>
+          </div>
+        `;
+      } else if (selectedType === 'skills') {
+        innerContent = `
+          ${getSectionHandleHTML()}
+          <h2 class="cv-h2" contenteditable="true">Technical & Core Skills</h2>
+          <div class="skill-pills">
+            <span class="skill-pill" contenteditable="true">Strategic Planning</span>
+            <span class="skill-pill" contenteditable="true">Cloud Infrastructure</span>
+          </div>
+        `;
+      } else if (selectedType === 'awards') {
+        innerContent = `
+          ${getSectionHandleHTML()}
+          <h2 class="cv-h2" contenteditable="true">Honors & Accreditations</h2>
+          <ul style="padding-left:16px; font-size:0.85rem;"><li contenteditable="true">Distinguished Technical Excellence Award (2024)</li></ul>
+        `;
+      } else if (selectedType === 'references') {
+        innerContent = `
+          ${getSectionHandleHTML()}
+          <h2 class="cv-h2" contenteditable="true">Professional Endorsements</h2>
+          <div style="font-size:0.82rem;" contenteditable="true">Marcus Vance, Chief Technology Officer — m.vance@company.com</div>
+        `;
+      } else {
+        innerContent = `
+          ${getSectionHandleHTML()}
+          <h2 class="cv-h2" contenteditable="true">Custom Section</h2>
+          <div contenteditable="true" style="font-size:0.85rem; line-height: 1.45;">• Enter custom bullet points, project highlights, or credentials...</div>
+        `;
+      }
+
+      newSec.innerHTML = innerContent;
+      targetContainer.appendChild(newSec);
+      bindDragAndDropEvents();
+      setTimeout(updateResponsiveSheetScale, 40);
+    }
+
+    // Render Structural CV into Canvas
+    function renderCVDocument() {
+      const paper = document.getElementById('cv-paper');
+      const b = blueprints.find(item => item.id === state.currentTemplate);
+      paper.className = 'cv-sheet ' + b.class;
+      if (!state.isStrictOnePage) paper.classList.add('allow-multi');
+
+      const avatarHTML = state.photoDataUrl 
+        ? `<img src="${state.photoDataUrl}" class="cv-avatar" alt="Profile" />`
+        : `<div class="cv-avatar" style="background:#cbd5e1; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-user" style="font-size:1.6rem; color:#64748b;"></i></div>`;
+
+      const skillsHTML = state.cvData.skills.map(s => `<span class="skill-pill" contenteditable="true">${s}</span>`).join('');
+      const experiencesHTML = state.cvData.experiences.map(exp => `
+        <div class="item-entry">
+          <div class="item-head"><span contenteditable="true">${exp.title}</span><span contenteditable="true">${exp.dates}</span></div>
+          <div class="item-sub"><span contenteditable="true">${exp.company}</span></div>
+          <div class="item-body" contenteditable="true">${exp.bullets}</div>
+        </div>
+      `).join('');
+
+      const educationsHTML = state.cvData.educations.map(edu => `
+        <div class="item-entry">
+          <div class="item-head"><span contenteditable="true">${edu.degree}</span><span contenteditable="true">${edu.dates}</span></div>
+          <div class="item-sub"><span contenteditable="true">${edu.school}</span></div>
+        </div>
+      `).join('');
+
+      const awardsHTML = state.cvData.awards.split('\n').filter(Boolean).map(a => `<li contenteditable="true">${a}</li>`).join('');
+      const refHTML = state.cvData.references.split('\n').filter(Boolean).map(r => `<div style="margin-bottom:3px;" contenteditable="true">${r}</div>`).join('');
+
+      const breakIndicatorHTML = `<div class="page-break-indicator"><span class="page-break-tag"><i class="fa-solid fa-scissors"></i> End of Page 1</span></div>`;
+
+      if (b.id === 2) {
+        // STRICT 30/70 TWO COLUMN SIDEBAR
+        paper.innerHTML = `
+          ${breakIndicatorHTML}
+          <div class="sidebar-left">
+            <div style="text-align:center; margin-bottom:15px;">
+              ${avatarHTML}
+              <h2 contenteditable="true" style="font-size:1.15rem; font-weight:800; margin-top:8px; color:#fff;">${state.cvData.fullName}</h2>
+              <div contenteditable="true" style="font-size:0.8rem; color:var(--cv-accent);">${state.cvData.jobTitle}</div>
+            </div>
+            <div class="cv-section" draggable="true">
+              ${getSectionHandleHTML()}
+              <h2 class="cv-h2" contenteditable="true">Contact Info</h2>
+              <div style="font-size:0.75rem; display:flex; flex-direction:column; gap:4px;" contenteditable="true">
+                <div><i class="fa-solid fa-envelope"></i> ${state.cvData.email}</div>
+                <div><i class="fa-solid fa-phone"></i> ${state.cvData.phone}</div>
+                <div><i class="fa-solid fa-location-dot"></i> ${state.cvData.address}</div>
+                <div><i class="fa-solid fa-globe"></i> ${state.cvData.links}</div>
+                ${state.cvData.civil ? `<div><i class="fa-solid fa-shield"></i> ${state.cvData.civil}</div>` : ''}
+              </div>
+            </div>
+            <div class="cv-section" draggable="true">
+              ${getSectionHandleHTML()}
+              <h2 class="cv-h2" contenteditable="true">Skills</h2>
+              <div class="skill-pills">${skillsHTML}</div>
+            </div>
+            <div class="cv-section" draggable="true">
+              ${getSectionHandleHTML()}
+              <h2 class="cv-h2" contenteditable="true">Awards</h2>
+              <ul style="padding-left:14px; font-size:0.72rem;">${awardsHTML}</ul>
+            </div>
+          </div>
+          <div class="main-right">
+            <div class="cv-section" draggable="true">
+              ${getSectionHandleHTML()}
+              <h2 class="cv-h2" contenteditable="true">Profile Summary</h2>
+              <p contenteditable="true" style="line-height:1.45; font-size:0.82rem;">${state.cvData.summary}</p>
+            </div>
+            <div class="cv-section" draggable="true">
+              ${getSectionHandleHTML()}
+              <h2 class="cv-h2" contenteditable="true">Experience</h2>
+              ${experiencesHTML}
+            </div>
+            <div class="cv-section" draggable="true">
+              ${getSectionHandleHTML()}
+              <h2 class="cv-h2" contenteditable="true">Education</h2>
+              ${educationsHTML}
+            </div>
+            <div class="cv-section" draggable="true">
+              ${getSectionHandleHTML()}
+              <h2 class="cv-h2" contenteditable="true">References</h2>
+              <div style="font-size:0.78rem;">${refHTML}</div>
+            </div>
+          </div>
+        `;
+      } else {
+        // STANDARD SINGLE-COLUMN FORMATS
+        paper.innerHTML = `
+          ${breakIndicatorHTML}
+          <div class="cv-section" draggable="true" id="sec-header">
+            ${getSectionHandleHTML()}
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:16px;">
+              <div>
+                <h1 contenteditable="true" style="font-size:1.8rem; font-weight:800; line-height:1.1;">${state.cvData.fullName}</h1>
+                <div contenteditable="true" style="font-size:0.95rem; color:var(--cv-accent); font-weight:600; margin-bottom:4px;">${state.cvData.jobTitle}</div>
+                <div class="meta-list" contenteditable="true">
+                  <span><i class="fa-solid fa-envelope"></i> ${state.cvData.email}</span>
+                  <span><i class="fa-solid fa-phone"></i> ${state.cvData.phone}</span>
+                  <span><i class="fa-solid fa-location-dot"></i> ${state.cvData.address}</span>
+                  <span><i class="fa-solid fa-globe"></i> ${state.cvData.links}</span>
+                </div>
+              </div>
+              ${avatarHTML}
+            </div>
+          </div>
+
+          <div class="cv-section" draggable="true">
+            ${getSectionHandleHTML()}
+            <h2 class="cv-h2" contenteditable="true">Profile Summary</h2>
+            <p contenteditable="true" style="line-height:1.45; font-size:0.85rem;">${state.cvData.summary}</p>
+          </div>
+
+          <div class="cv-section" draggable="true">
+            ${getSectionHandleHTML()}
+            <h2 class="cv-h2" contenteditable="true">Work Experience</h2>
+            <div class="timeline-wrap">${experiencesHTML}</div>
+          </div>
+
+          <div class="cv-section" draggable="true">
+            ${getSectionHandleHTML()}
+            <h2 class="cv-h2" contenteditable="true">Education & Credentials</h2>
+            ${educationsHTML}
+          </div>
+
+          <div class="cv-section" draggable="true">
+            ${getSectionHandleHTML()}
+            <h2 class="cv-h2" contenteditable="true">Skills & Competencies</h2>
+            <div class="skill-pills">${skillsHTML}</div>
+          </div>
+
+          <div class="cv-section" draggable="true">
+            ${getSectionHandleHTML()}
+            <h2 class="cv-h2" contenteditable="true">Certifications & Awards</h2>
+            <ul style="padding-left:16px; font-size:0.82rem;">${awardsHTML}</ul>
+          </div>
+
+          <div class="cv-section" draggable="true">
+            ${getSectionHandleHTML()}
+            <h2 class="cv-h2" contenteditable="true">References</h2>
+            <div style="font-size:0.8rem;">${refHTML}</div>
+          </div>
+        `;
+      }
+
+      bindDragAndDropEvents();
+      saveHistorySnapshot();
+      setTimeout(updateResponsiveSheetScale, 40);
+    }
+
+    // Drag and Drop Logic
+    let draggedElement = null;
+
+    function bindDragAndDropEvents() {
+      const sections = document.querySelectorAll('.cv-section');
+      sections.forEach(sec => {
+        sec.removeEventListener('dragstart', handleDragStart);
+        sec.removeEventListener('dragover', handleDragOver);
+        sec.removeEventListener('dragleave', handleDragLeave);
+        sec.removeEventListener('drop', handleDrop);
+        sec.removeEventListener('dragend', handleDragEnd);
+
+        sec.addEventListener('dragstart', handleDragStart);
+        sec.addEventListener('dragover', handleDragOver);
+        sec.addEventListener('dragleave', handleDragLeave);
+        sec.addEventListener('drop', handleDrop);
+        sec.addEventListener('dragend', handleDragEnd);
+      });
+    }
+
+    function handleDragStart(e) {
+      saveHistorySnapshot();
+      draggedElement = this;
+      this.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (this !== draggedElement) this.classList.add('drag-over');
+    }
+
+    function handleDragLeave() {
+      this.classList.remove('drag-over');
+    }
+
+    function handleDrop(e) {
+      e.stopPropagation();
+      this.classList.remove('drag-over');
+      if (draggedElement && this !== draggedElement && this.parentNode === draggedElement.parentNode) {
+        const parent = this.parentNode;
+        const allSections = Array.from(parent.querySelectorAll('.cv-section'));
+        const draggedIndex = allSections.indexOf(draggedElement);
+        const targetIndex = allSections.indexOf(this);
+
+        if (draggedIndex < targetIndex) {
+          parent.insertBefore(draggedElement, this.nextSibling);
+        } else {
+          parent.insertBefore(draggedElement, this);
+        }
+        saveHistorySnapshot();
+      }
+    }
+
+    function handleDragEnd() {
+      this.classList.remove('dragging');
+      document.querySelectorAll('.cv-section').forEach(s => s.classList.remove('drag-over'));
+    }
+
+    function execCmd(command, val = null) {
+      saveHistorySnapshot();
+      document.execCommand(command, false, val);
+    }
+
+    function insertCustomHeading() {
+      const heading = prompt('Heading Title:', 'Key Milestone');
+      if (heading) {
+        saveHistorySnapshot();
+        document.execCommand('insertHTML', false, `<h3 style="font-size:0.95rem; font-weight:700; margin-top:5px;">${heading}</h3>`);
+      }
+    }
+
+    /* Isolated Client-side PDF / Image Exporter */
+    async function exportOnlyCVToPDF() {
+      const originalSheet = document.getElementById('cv-paper');
+      const page2 = document.getElementById('cv-paper-page-2');
+
+      const handles = document.querySelectorAll('.section-handle, .page-break-indicator');
+      handles.forEach(h => h.style.display = 'none');
+
+      // Temporarily reset CSS scale transformation for sharp vector capture
+      const previousTransform = originalSheet.style.transform;
+      originalSheet.style.transform = 'none';
+
+      try {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const canvas1 = await html2canvas(originalSheet, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        });
+        const imgData1 = canvas1.toDataURL('image/jpeg', 0.98);
+        pdf.addImage(imgData1, 'JPEG', 0, 0, 210, 297);
+
+        if (page2) {
+          page2.style.transform = 'none';
+          const canvas2 = await html2canvas(page2, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+          });
+          const imgData2 = canvas2.toDataURL('image/jpeg', 0.98);
+          pdf.addPage();
+          pdf.addImage(imgData2, 'JPEG', 0, 0, 210, 297);
+        }
+
+        pdf.save(`${state.cvData.fullName.replace(/\s+/g, '_')}_CV.pdf`);
+      } catch (err) {
+        alert('PDF compilation error. Opening vector print fallback.');
+        window.print();
+      } finally {
+        originalSheet.style.transform = previousTransform;
+        handles.forEach(h => h.style.display = '');
+        updateResponsiveSheetScale();
+      }
+    }
+
+    async function exportOnlyCVToImage() {
+      const originalSheet = document.getElementById('cv-paper');
+      const handles = document.querySelectorAll('.section-handle, .page-break-indicator');
+      handles.forEach(h => h.style.display = 'none');
+      const previousTransform = originalSheet.style.transform;
+      originalSheet.style.transform = 'none';
+
+      try {
+        const canvas = await html2canvas(originalSheet, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff'
+        });
+
+        const link = document.createElement('a');
+        link.download = `${state.cvData.fullName.replace(/\s+/g, '_')}_CV.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch (err) {
+        alert('Image export failed.');
+      } finally {
+        originalSheet.style.transform = previousTransform;
+        handles.forEach(h => h.style.display = '');
+        updateResponsiveSheetScale();
+      }
+    }
+  </script>
+</body>
+</html>
